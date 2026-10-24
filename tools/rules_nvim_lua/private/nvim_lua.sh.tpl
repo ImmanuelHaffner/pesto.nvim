@@ -19,4 +19,13 @@ source "${RUNFILES_DIR:-/dev/null}/$f" 2>/dev/null || \
 NVIM_BIN="$(rlocation "{{NVIM_BIN}}")"
 ENTRY_POINT="$(rlocation "{{ENTRY_POINT}}")"
 
-"$NVIM_BIN" -l "$ENTRY_POINT"
+ENTRY_POINT_ARGS="{{ENTRY_POINT_ARGS}}"
+if [ -z "$ENTRY_POINT_ARGS" ]; then
+    ENTRY_POINT_ARGS="/dev/null"
+else
+    ENTRY_POINT_ARGS="$(rlocation "{{ENTRY_POINT_ARGS}}")"
+fi
+
+"$NVIM_BIN" -l \
+    "$ENTRY_POINT" \
+    $(< "$ENTRY_POINT_ARGS")
