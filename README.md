@@ -230,6 +230,10 @@ This list shows a subset of the commands. For a full list see `:help pesto.comma
 " It supports auto-completion for targets.
 :Pesto bazel <bazel-subcommand> [subcommand-args]
 
+" Runs a sub-command as if Pesto had been started from <dir> rather than from
+" the current buffer's package. Supported by `bazel`, `build`, and `test`.
+:Pesto -C <dir> bazel <bazel-subcommand> [subcommand-args]
+
 " Provides a way to quickly invoke a Bazel build without typing out a full bazel
 " command. "Target resolvers" are user-defined callbacks that return either a
 " target query or target pattern. For more info see `:h pesto.commands.build`.
@@ -257,6 +261,16 @@ This list shows a subset of the commands. For a full list see `:help pesto.comma
 " your CI/CD pipeline).
 :Pesto load-quickfix <bep-json-file>
 ```
+
+## Lua API
+
+`require('pesto').run()` runs Bazel like `:Pesto bazel`, but takes the directory to run from as a parameter instead of deriving it from the current buffer:
+
+```lua
+require('pesto').run({ cmd = { 'build', '//foo:bar' }, cwd = '~/src/repo' })
+```
+
+See `:help pesto.lua-api`.
 
 ## Remote caching (experimental)
 

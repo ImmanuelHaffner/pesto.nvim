@@ -27,8 +27,10 @@ function CopyLastBazelCommandSubcommand:_execute(opts)
     return
   end
   local shell_command = table.concat(run_opts.bazel_command, ' ')
+  local runner = require('pesto.runner.runner')
+  local working_dir = runner.get_working_dir(run_opts.context) or '.'
   local full_shell_command =
-    string.format('(cd %s && %s)', run_opts.context.package_dir or '.', shell_command)
+    string.format('(cd %s && %s)', vim.fn.shellescape(working_dir), shell_command)
 
   vim.fn.setreg('+', full_shell_command)
   vim.fn.setreg('"', full_shell_command .. '\n')

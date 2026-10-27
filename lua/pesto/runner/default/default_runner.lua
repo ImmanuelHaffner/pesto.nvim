@@ -75,7 +75,7 @@ function DefaultRunner.__call(self, opts)
 
   self._build_window_manager:start_new_build({
     term_command = opts.bazel_command,
-    cwd = opts.context.package_dir or opts.context.workspace_dir,
+    cwd = require('pesto.runner.runner').get_working_dir(opts.context),
     auto_open = self._internal_config:get_auto_open_build_term(),
     capture_stdout = quickfix_log_source == 'pty_output',
     on_exit = function(is_current, stdout_lines)

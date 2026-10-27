@@ -7,10 +7,11 @@ Contents                                                         *pesto-contents
 1. Intro .......................................................... |pesto.intro|
 2. Config ........................................................ |pesto.config|
 3. Commands .................................................... |pesto.commands|
-4. Bazel concepts ........................................ |pesto.bazel_concepts|
-5. Default runner ........................................ |pesto.default_runner|
-6. BEP integration ...................................... |pesto.bep_integration|
-7. Remote caching ........................................ |pesto.remote_caching|
+4. Lua API ...................................................... |pesto.lua-api|
+5. Bazel concepts ........................................ |pesto.bazel_concepts|
+6. Default runner ........................................ |pesto.default_runner|
+7. BEP integration ...................................... |pesto.bep_integration|
+8. Remote caching ........................................ |pesto.remote_caching|
 
 ================================================================================
 Intro                                                               *pesto.intro*
@@ -454,8 +455,20 @@ Commands                                                         *pesto.commands
 Pesto's CLI is similar to `git`: There is a single top-level command and
 various sub-commands. Here is the format:
 >viml
-    :Pesto <sub-command>
+    :Pesto [-C <dir>] <sub-command>
 <
+                                                              *pesto.commands.-C*
+`-C <dir>`
+    Runs the sub-command as if Pesto had been started from `<dir>` rather than
+    from the current buffer's package (cf. `git -C`). Bazel runs in `<dir>`,
+    and the workspace root, package directory, and package label that Pesto
+    hands to target resolvers and runners are resolved from `<dir>`, as is
+    auto-completion of the sub-command's arguments. `<dir>` is expanded like a
+    file name (`~`, `%:h`) and must lie in a Bazel workspace.
+
+    Only `bazel`, `build`, and `test` accept `-C`. Sub-commands that derive
+    their targets from the current buffer reject it.
+
 Listed below are the possible sub-commands:
 
                                                             *pesto.commands.bazel*
@@ -551,6 +564,27 @@ Listed below are the possible sub-commands:
 <
     The `<action_mnemonic>` is the mnemonic for the failed action, the
     `<number>` part is not meaningful and is added to ensure uniqueness.
+
+================================================================================
+Lua API                                                           *pesto.lua-api*
+
+                                                                    *pesto.run()*
+`require('pesto').run({opts})`
+    Runs Bazel through the configured runner (|pesto.config.bazel_runner|),
+    like `:Pesto [-C <cwd>] bazel <cmd>`. Given a `cwd`, it does not depend
+    on which buffer is current, which suits scripts and other plugins.
+
+    {opts} is a table with these fields:
+      • {cmd}  (`string[]`) Bazel arguments without the executable, e.g.
+               `{ 'build', '//foo:bar' }`.
+      • {cwd}  (`string?`) Run as if from this directory (see
+               |pesto.commands.-C|). Defaults to the current buffer's package.
+
+    Raises an error if {cmd} is empty or if the directory is not in a Bazel
+    workspace.
+>lua
+    require('pesto').run({ cmd = { 'test', '//foo/...' }, cwd = '~/src/repo' })
+<
 
 ================================================================================
 Bazel concepts                                              *pesto.bazel_concepts*

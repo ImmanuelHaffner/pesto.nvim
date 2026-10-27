@@ -37,4 +37,17 @@ describe('bazel_repo.get_package_label', function()
       assert.are.equal(test_case.expected_label, label)
     end
   end)
+
+  it('resolves the package of an explicit directory', function()
+    local bazel_repo = require('pesto.bazel.repo')
+    local a3_dir = vim.fs.joinpath(bazel_repo_dir, 'a1/a2/a3')
+    local c2_dir = vim.fs.joinpath(bazel_repo_dir, 'c1/c2')
+    assert.are.equal('//a1/a2', bazel_repo.get_package_label(nil, a3_dir))
+    assert.are.equal('//c1/c2', bazel_repo.get_package_label(nil, c2_dir))
+    -- The fixture path may be relative; the marker file is always absolute.
+    assert.are.equal(
+      vim.fs.normalize(vim.fn.fnamemodify(vim.fs.joinpath(bazel_repo_dir, 'MODULE.bazel'), ':p')),
+      vim.fs.normalize(bazel_repo.find_project_root_marker_file(nil, a3_dir))
+    )
+  end)
 end)

@@ -74,7 +74,7 @@ function M.get_bazel_bash_completion_request(nvim_complete_opts, bash_command_to
   ---@type string[]
   local completion_request = {}
 
-  local cwd = get_cwd(nvim_complete_opts.buf_nr)
+  local cwd = nvim_complete_opts.cwd or get_cwd(nvim_complete_opts.buf_nr)
   table.insert(completion_request, bash_completion_args.cwd(cwd))
 
   local comp_line = get_comp_line(bash_command_tokens)

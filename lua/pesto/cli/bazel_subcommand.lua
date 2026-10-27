@@ -8,6 +8,7 @@ local BazelSubcommand = {}
 BazelSubcommand.__index = BazelSubcommand
 
 BazelSubcommand.name = 'bazel'
+BazelSubcommand.supports_cwd = true
 
 ---@param internal_config pesto.InternalConfig
 ---@param bazel_basic_completion pesto.BazelBasicCompletion
@@ -93,7 +94,7 @@ end
 ---@param opts pesto.SubcommandExecuteOpts
 function BazelSubcommand:_execute(opts)
   local runner = require('pesto.runner.runner')
-  local context = runner.get_run_bazel_context()
+  local context = runner.get_run_bazel_context({ cwd = opts.cwd })
   local bazel_command = vim.deepcopy(opts.fargs)
 
   table.insert(bazel_command, 1, self._internal_config:get_bazel_executable())

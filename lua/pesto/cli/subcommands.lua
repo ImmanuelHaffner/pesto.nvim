@@ -9,12 +9,14 @@ local M = {}
 ---@field cursor_pos number
 ---@field arg_lead string
 ---@field buf_nr number
+---@field cwd string|nil Directory given by `:Pesto -C <dir>`
 
 ---@alias pesto.SubcommandCompleteFn fun(opts: pesto.SubcommandCompleteOpts): string[]
 
 ---@class pesto.SubcommandExecuteOpts
 ---@field fargs string[]
 ---@field buf_nr number
+---@field cwd string|nil Absolute directory given by `:Pesto -C <dir>`
 
 ---@alias pesto.SubcommandExecuteFn fun(opts: pesto.SubcommandExecuteOpts)
 
@@ -25,6 +27,9 @@ local M = {}
 ---@field name string
 ---@field complete pesto.SubcommandCompleteFn?
 ---@field execute pesto.SubcommandExecuteFn
+--- Whether the subcommand accepts `:Pesto -C <dir>`. Subcommands that derive
+--- their targets from the current buffer leave this unset.
+---@field supports_cwd boolean?
 
 ---@param open_cmd "vsplit"|"split"
 local function open_build_file(open_cmd)

@@ -51,6 +51,7 @@ function BazelBasicCompletion:complete(opts)
       cursor_pos = cursor_pos,
       arg_lead = opts.arg_lead,
       buf_nr = opts.buf_nr,
+      cwd = opts.cwd,
     })
   end
 
@@ -61,7 +62,7 @@ end
 ---@return string[]
 function BazelBasicCompletion:complete_subcommand(opts)
   local bazel_repo = require('pesto.bazel.repo')
-  if not bazel_repo.is_in_bazel_repo(opts.buf_nr) then
+  if not bazel_repo.is_in_bazel_repo(opts.buf_nr, opts.cwd) then
     return {}
   end
   if opts.arg_lead == '/' then
@@ -73,7 +74,7 @@ function BazelBasicCompletion:complete_subcommand(opts)
       return {}
     end
 
-    local project_root_dir = bazel_repo.find_project_root_dir(opts.buf_nr)
+    local project_root_dir = bazel_repo.find_project_root_dir(opts.buf_nr, opts.cwd)
     if not project_root_dir then
       return {}
     end
@@ -115,7 +116,7 @@ function BazelBasicCompletion:complete_subcommand(opts)
     elseif bazel_label.target_name ~= nil then
       -- Working on the target name part
       local target_name_candidates =
-        self:_get_target_name_completion_candidates(bazel_label.target_name)
+        self:_get_target_name_completion_candidates(bazel_label.target_name, opts.cwd)
       return vim.tbl_map(function(target_name)
         return '//' .. bazel_label.package_name .. ':' .. target_name
       end, target_name_candidates)
@@ -123,7 +124,7 @@ function BazelBasicCompletion:complete_subcommand(opts)
     return {}
   elseif vim.startswith(opts.arg_lead, ':') then
     local target_lead = opts.arg_lead:sub(2)
-    local target_names = self:_get_target_name_completion_candidates(target_lead)
+    local target_names = self:_get_target_name_completion_candidates(target_lead, opts.cwd)
     return vim.tbl_map(function(target_name)
       return ':' .. target_name
     end, target_names)
@@ -160,9 +161,10 @@ function BazelBasicCompletion:_get_dir_completion_candidates(base_path, dir_name
 end
 
 ---@param target_name_lead string
-function BazelBasicCompletion:_get_target_name_completion_candidates(target_name_lead)
+---@param cwd string|nil
+function BazelBasicCompletion:_get_target_name_completion_candidates(target_name_lead, cwd)
   local bazel_repo = require('pesto.bazel.repo')
-  local build_file_path = bazel_repo.find_build_file()
+  local build_file_path = bazel_repo.find_build_file(nil, cwd)
   if build_file_path == nil then
     require('pesto.logger').debug('failed to find BUILD or BUILD.bazel file for the current buffer')
     return {}

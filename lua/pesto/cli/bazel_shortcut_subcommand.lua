@@ -11,6 +11,9 @@
 local BazelShortcutSubcommand = {}
 BazelShortcutSubcommand.__index = BazelShortcutSubcommand
 
+-- With `-C <dir>`, target resolvers see the package of `<dir>`.
+BazelShortcutSubcommand.supports_cwd = true
+
 --- Parent class for Pesto's `build` and `test` subcommands. These commands are
 --- used to invoke bazel using parameterized shortcuts based on the current
 --- file.
@@ -85,7 +88,7 @@ function BazelShortcutSubcommand:_execute(opts)
   end
 
   local runner = require('pesto.runner.runner')
-  local context = runner.get_run_bazel_context()
+  local context = runner.get_run_bazel_context({ cwd = opts.cwd })
   local target_resolver_result = target_resolver(context)
 
   if target_resolver_result.query ~= nil then
