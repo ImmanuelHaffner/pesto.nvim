@@ -108,7 +108,10 @@ function BuildWindowManager:start_new_build(opts)
         end
 
         if build_info ~= self._current_build_info then
+          -- A newer build replaced this one and stopped it; its buffer is no
+          -- longer shown, so there is nothing left to set up or report.
           vim.api.nvim_buf_delete(term_buf_id, { force = true })
+          return
         end
 
         self:_set_quick_exit_keymaps(term_buf_id)
