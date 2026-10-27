@@ -580,10 +580,48 @@ Lua API                                                           *pesto.lua-api
       • {cwd}  (`string?`) Run as if from this directory (see
                |pesto.commands.-C|). Defaults to the current buffer's package.
 
+    Returns the invocation's ID, which identifies it in the |pesto.events|.
+
     Raises an error if {cmd} is empty or if the directory is not in a Bazel
     workspace.
 >lua
     require('pesto').run({ cmd = { 'test', '//foo/...' }, cwd = '~/src/repo' })
+<
+                                                                   *pesto.events*
+                                         *PestoBuildSucceeded* *PestoBuildFailed*
+Events
+    After each build, the default runner (|pesto.default_runner|) emits a
+    |User| autocommand: `PestoBuildSucceeded` when Bazel exited with 0, and
+    `PestoBuildFailed` otherwise. It fires once the quickfix list is fully
+    loaded, including failed action logs fetched from a remote cache, so a
+    handler can act on the build's errors. Custom runners
+    (|pesto.config.bazel_runner|) emit no events.
+
+    The event's `data` is a table with these fields:
+      • {id}             (`integer`) Matches the value returned by
+                         |pesto.run()|.
+      • {exit_code}      (`integer`) Bazel's exit code.
+      • {command}        (`string[]`) The Bazel command line, including the
+                         executable and the options Pesto injected.
+      • {cwd}            (`string`) Directory Bazel ran in.
+      • {workspace_dir}  (`string`) The workspace root.
+      • {bep_file}       (`string?`) The BEP JSON file, if Pesto requested one.
+      • {superseded}     (`boolean`) True if a newer build replaced this one
+                         before it finished. Pesto stops such builds and does
+                         not load their quickfix list.
+      • {qf_id}          (`integer?`) |quickfix-ID| of the list holding the
+                         build's errors; nil for superseded builds.
+>lua
+    local id = require('pesto').run({ cmd = { 'build', '//foo:bar' } })
+    vim.api.nvim_create_autocmd('User', {
+      pattern = { 'PestoBuildSucceeded', 'PestoBuildFailed' },
+      callback = function(args)
+        if args.data.id == id and not args.data.superseded then
+          local qf = vim.fn.getqflist({ id = args.data.qf_id, size = 0 })
+          print(args.match, qf.size)
+        end
+      end,
+    })
 <
 
 ================================================================================
@@ -639,7 +677,8 @@ Pesto's default runner runs the Bazel command in a terminal window. If the
 |auto_open_build_term| option is set to `true`, then terminal window will
 automatically appear showing Bazel's output. Regardless of the
 |auto_open_build_term| setting, Pesto will always send a notification when the
-Bazel invocation finishes.
+Bazel invocation finishes, and emit one of the |pesto.events| once the quickfix
+list is loaded.
 
 ================================================================================
 Build Events Protocol (BEP) integration                   *pesto.bep_integration*

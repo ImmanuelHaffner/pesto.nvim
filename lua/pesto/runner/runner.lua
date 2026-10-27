@@ -13,6 +13,9 @@ local M = {}
 ---@class pesto.RunBazelOpts
 ---@field bazel_command string[]
 ---@field context pesto.RunBazelContext
+--- Identifies the invocation in the `User PestoBuild*` events. Assigned by
+--- Pesto before the runner is called.
+---@field id integer|nil
 
 ---@alias pesto.RunBazelFn fun(opts: pesto.RunBazelOpts)
 

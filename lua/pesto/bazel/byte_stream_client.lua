@@ -150,12 +150,17 @@ function ByteStreamClient:get_byte_streams(opts)
         logger.error(string.format('successfully finished fetching byte streams', exit_code))
       end
 
-      ---@type string[]
-      local failed_uris = {}
-      for uri, _ in pairs(pending_uris_set) do
-        table.insert(failed_uris, uri)
-      end
-      opts.on_done(failed_uris)
+      -- on_stdout hands finished downloads over via vim.schedule(). Scheduling
+      -- this as well lets those callbacks run first, so that a stream still
+      -- waiting in the queue is not reported as failed.
+      vim.schedule(function()
+        ---@type string[]
+        local failed_uris = {}
+        for uri, _ in pairs(pending_uris_set) do
+          table.insert(failed_uris, uri)
+        end
+        opts.on_done(failed_uris)
+      end)
     end,
   })
 

@@ -1,0 +1,3 @@
+{"id":{"started":{}},"children":[],"started":{"command":"build","workspaceDirectory":"/workspace"}}
+{"id":{"actionCompleted":{"primaryOutput":"bazel-out/a.jar","label":"//a:a"}},"action":{"exitCode":1,"type":"Javac","label":"//a:a","stderr":{"name":"stderr","uri":"file:///stderr-a"}}}
+{"id":{"actionCompleted":{"primaryOutput":"bazel-out/b.jar","label":"//b:b"}},"action":{"exitCode":1,"type":"Javac","label":"//b:b","stderr":{"name":"stderr","uri":"file:///stderr-b"}}}

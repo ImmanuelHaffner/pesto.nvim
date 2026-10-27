@@ -63,12 +63,18 @@ function BuildEventFileLoader:fetch_file(opts)
         byte_stream_service_uri = opts.remote_cache_uri,
         byte_stream_uris = { opts.uri },
         on_download = opts.on_load,
-        on_done = function(uris)
-          opts.on_error(string.format('failed to download uri: %s', uris[1]))
+        on_done = function(failed_uris)
+          if #failed_uris > 0 then
+            opts.on_error(string.format('failed to download uri: %s', failed_uris[1]))
+          end
         end,
         request_headers = opts.remote_headers or {},
       })
+    else
+      opts.on_error(string.format('unsupported URI scheme: %s', opts.uri))
     end
+  else
+    opts.on_error('missing URI')
   end
 end
 

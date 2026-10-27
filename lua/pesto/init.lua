@@ -15,6 +15,7 @@ end
 --- Runs Bazel through the configured runner, like
 --- `:Pesto [-C <cwd>] bazel <cmd>`.
 ---@param opts pesto.RunOpts
+---@return integer id Matches `data.id` of the `User PestoBuild*` events for this run
 function M.run(opts)
   if type(opts) ~= 'table' or type(opts.cmd) ~= 'table' or #opts.cmd == 0 then
     error('pesto.run: `cmd` must be a non-empty list of Bazel arguments', 2)
@@ -38,7 +39,7 @@ function M.run(opts)
   local bazel_command = { components.internal_config:get_bazel_executable() }
   vim.list_extend(bazel_command, opts.cmd)
 
-  components.internal_run_bazel_fn({
+  return components.internal_run_bazel_fn({
     bazel_command = bazel_command,
     context = runner.get_run_bazel_context({ cwd = cwd }),
   })

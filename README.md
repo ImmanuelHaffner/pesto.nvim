@@ -270,7 +270,9 @@ This list shows a subset of the commands. For a full list see `:help pesto.comma
 require('pesto').run({ cmd = { 'build', '//foo:bar' }, cwd = '~/src/repo' })
 ```
 
-See `:help pesto.lua-api`.
+Once a build has finished and its quickfix list is loaded, the default runner emits a `User` autocommand, `PestoBuildSucceeded` or `PestoBuildFailed`, whose `data` carries the exit code, the ID that `run()` returned, and the quickfix list's ID.
+
+See `:help pesto.lua-api` and `:help pesto.events`.
 
 ## Remote caching (experimental)
 

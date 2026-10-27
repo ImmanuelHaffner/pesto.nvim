@@ -3,6 +3,8 @@
 ---@field progress_logs string[]|nil
 ---@field workspace_root string
 ---@field on_first_quickfix_loaded function|nil
+--- Called once loading has finished, whether or not it succeeded.
+---@field on_done function|nil
 
 ---@class pesto.QuickfixLoader
 ---@field private _action_logs_quickfix_item_loader pesto.ActionLogsQuickfixItemLoader
@@ -69,26 +71,40 @@ function QuickfixLoader:load_quickfix(opts)
     end
   end
 
+  local called_on_done = false
+  local function on_done()
+    if not called_on_done then
+      called_on_done = true
+      if opts.on_done ~= nil then
+        opts.on_done()
+      end
+    end
+  end
+
   local logger = require('pesto.logger')
   if opts.build_event_tree then
     logger.trace('Loading quickfix from action logs')
     self._action_logs_quickfix_item_loader:get_quickfix_items(
       opts.build_event_tree,
       on_items_loaded,
-      on_error
+      on_error,
+      on_done
     )
   elseif opts.progress_logs then
     logger.trace('Loading quickfix from progress output')
+    -- Parsing progress logs is synchronous.
     self._progress_logs_quickfix_item_loader:get_quickfix_items(
       opts.progress_logs,
       opts.workspace_root,
       on_items_loaded,
       on_error
     )
+    on_done()
   else
     logger.error(
       'Cannot load quickfix items. Must build_event_tree or progress_logs must be defined'
     )
+    on_done()
   end
 end
 

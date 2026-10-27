@@ -78,10 +78,35 @@ function DefaultRunner.__call(self, opts)
     cwd = require('pesto.runner.runner').get_working_dir(opts.context),
     auto_open = self._internal_config:get_auto_open_build_term(),
     capture_stdout = quickfix_log_source == 'pty_output',
-    on_exit = function(is_current, stdout_lines)
+    on_exit = function(is_current, stdout_lines, exit_code)
       self:_maybe_clean_temp_bep_files()
+
+      local events = require('pesto.events')
+      ---@type pesto.BuildFinishedEventData
+      local event_data = {
+        id = opts.id,
+        exit_code = exit_code,
+        command = opts.bazel_command,
+        cwd = require('pesto.runner.runner').get_working_dir(opts.context),
+        workspace_dir = opts.context.workspace_dir,
+        bep_file = bep_file,
+        superseded = not is_current,
+      }
+
       if not is_current then
+        events.emit_build_finished(event_data)
         return
+      end
+
+      -- Listeners are told only once the quickfix list is complete, so that
+      -- they can act on the build's errors.
+      local emitted = false
+      local function on_quickfix_done()
+        if not emitted then
+          emitted = true
+          event_data.qf_id = vim.fn.getqflist({ id = 0 }).id
+          events.emit_build_finished(event_data)
+        end
       end
 
       local function on_first_quickfix_loaded()
@@ -101,36 +126,47 @@ function DefaultRunner.__call(self, opts)
         end
       end
 
-      if bep_file then
-        if not vim.uv.fs_stat(bep_file) then
-          logger.error(string.format('BEP logs file does not exist: %s', bep_file))
-        else
-          ---@diagnostic disable-next-line: invisible
-          self._build_event_tree = self._build_event_json_loader:load(bep_file)
+      local ok, err = pcall(function()
+        if bep_file then
+          if not vim.uv.fs_stat(bep_file) then
+            logger.error(string.format('BEP logs file does not exist: %s', bep_file))
+          else
+            ---@diagnostic disable-next-line: invisible
+            self._build_event_tree = self._build_event_json_loader:load(bep_file)
+          end
         end
-      end
 
-      if quickfix_log_source == 'bep' then
-        ---@diagnostic disable-next-line: invisible
-        self._quickfix_loader:load_quickfix({
-          ---@diagnostic disable-next-line: invisible
-          build_event_tree = self._build_event_tree,
-          on_first_quickfix_loaded = on_first_quickfix_loaded,
-          workspace_root = opts.context.workspace_dir,
-        })
-      elseif quickfix_log_source == 'pty_output' then
-        if stdout_lines then
+        if quickfix_log_source == 'bep' then
           ---@diagnostic disable-next-line: invisible
           self._quickfix_loader:load_quickfix({
-            progress_logs = stdout_lines,
+            ---@diagnostic disable-next-line: invisible
+            build_event_tree = self._build_event_tree,
             on_first_quickfix_loaded = on_first_quickfix_loaded,
+            on_done = on_quickfix_done,
             workspace_root = opts.context.workspace_dir,
           })
+        elseif quickfix_log_source == 'pty_output' then
+          if stdout_lines then
+            ---@diagnostic disable-next-line: invisible
+            self._quickfix_loader:load_quickfix({
+              progress_logs = stdout_lines,
+              on_first_quickfix_loaded = on_first_quickfix_loaded,
+              on_done = on_quickfix_done,
+              workspace_root = opts.context.workspace_dir,
+            })
+          else
+            logger.error("log source is 'pty_output' but stdout_lines were not captured")
+            on_quickfix_done()
+          end
         else
-          logger.error("log source is 'pty_output' but stdout_lines were not captured")
+          assert(false, string.format('unrecognized log source: %s', quickfix_log_source))
         end
-      else
-        assert(false, string.format('unrecognized log source: %s', quickfix_log_source))
+      end)
+
+      if not ok then
+        -- Listeners still need to learn that the build is over.
+        on_quickfix_done()
+        error(err)
       end
     end,
     get_build_event_tree = function()

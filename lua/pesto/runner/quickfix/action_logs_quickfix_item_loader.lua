@@ -36,8 +36,29 @@ end
 ---@param build_events pesto.BuildEventTree
 ---@param on_items_loaded fun(qf_items: table[]) Called when a batch quickfix items have been parsed
 ---@param on_error fun(err: any) Called when an error occurs
-function ActionLogsQuickfixItemLoader:get_quickfix_items(build_events, on_items_loaded, on_error)
+---@param on_done fun()|nil Called once, after the logs of every failed action were loaded or failed to load
+function ActionLogsQuickfixItemLoader:get_quickfix_items(
+  build_events,
+  on_items_loaded,
+  on_error,
+  on_done
+)
   local logger = require('pesto.logger')
+
+  -- Fetches may complete synchronously (local files) or asynchronously
+  -- (remote caches), so count them and report completion only once all have
+  -- been started and none is pending.
+  local pending_fetches = 0
+  local all_fetches_started = false
+  local called_on_done = false
+  local function maybe_call_on_done()
+    if all_fetches_started and pending_fetches == 0 and not called_on_done then
+      called_on_done = true
+      if on_done then
+        on_done()
+      end
+    end
+  end
 
   local BuildEventTreeQueries = require('pesto.bazel.build_event_tree_queries')
   local build_event_tree_queries = BuildEventTreeQueries:new(build_events)
@@ -94,23 +115,47 @@ function ActionLogsQuickfixItemLoader:get_quickfix_items(build_events, on_items_
       remote_cache_info = self:_get_remote_cache_info(build_events)
     end
 
-    self._build_event_file_loader:fetch_file({
+    pending_fetches = pending_fetches + 1
+    local settled = false
+    local function settle()
+      if not settled then
+        settled = true
+        pending_fetches = pending_fetches - 1
+        maybe_call_on_done()
+      end
+    end
+
+    local ok, err = pcall(self._build_event_file_loader.fetch_file, self._build_event_file_loader, {
       uri = stderr_uri,
       on_load = function(stderr_lines)
         logger.debug(string.format('Fetched stderr logs. uri=%s', stderr_uri))
-        local items = self._quickfix_item_parser:parse(stderr_lines, errorformat, workspace_root)
-        on_items_loaded(items)
+        local parse_ok, parse_err = pcall(function()
+          local items = self._quickfix_item_parser:parse(stderr_lines, errorformat, workspace_root)
+          on_items_loaded(items)
+        end)
+        settle()
+        if not parse_ok then
+          error(parse_err)
+        end
       end,
-      on_error = function(err)
+      on_error = function(fetch_err)
         logger.error(
-          string.format('Error loading action stderr file %s: %s', stderr_uri, tostring(err))
+          string.format('Error loading action stderr file %s: %s', stderr_uri, tostring(fetch_err))
         )
-        on_error(err)
+        on_error(fetch_err)
+        settle()
       end,
       remote_cache_uri = vim.tbl_get(remote_cache_info or {}, 'uri'),
       remote_headers = vim.tbl_get(remote_cache_info or {}, 'remote_headers'),
     })
+    if not ok then
+      logger.error(string.format('Failed to fetch %s: %s', stderr_uri, tostring(err)))
+      settle()
+    end
   end)
+
+  all_fetches_started = true
+  maybe_call_on_done()
 end
 
 ---@param build_events pesto.BuildEventTree

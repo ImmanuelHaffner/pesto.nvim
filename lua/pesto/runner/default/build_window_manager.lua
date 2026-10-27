@@ -9,7 +9,8 @@
 --- - `is_current`: parameter indicates whether or not the build is the one
 --- currently being displayed in the build window.
 --- - `stdout_lines`: When capture_stdout is true,
----@field on_exit fun(is_current: boolean, stdout_lines: string[]|nil)|nil
+--- - `exit_code`: The exit code of the Bazel process.
+---@field on_exit fun(is_current: boolean, stdout_lines: string[]|nil, exit_code: integer)|nil
 
 ---@class pesto.BuildWindowManager.BuildInfo
 ---@field term_buf_id number
@@ -103,7 +104,7 @@ function BuildWindowManager:start_new_build(opts)
         build_info.exit_code = exit_code
         ---@diagnostic disable-next-line: invisible
         if opts.on_exit ~= nil then
-          opts.on_exit(build_info == self._current_build_info, stdout_lines)
+          opts.on_exit(build_info == self._current_build_info, stdout_lines, exit_code)
         end
 
         if build_info ~= self._current_build_info then
